@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
 import yt_dlp
+from flask_cors import CORS  # <-- add this
 
 app = Flask(__name__)
+CORS(app)  # <-- enable CORS for all routes
 
 # --- Helper Function ---
 def download_youtube(url, is_playlist=False):
