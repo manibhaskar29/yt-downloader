@@ -1,22 +1,28 @@
+import os
 from flask import Flask, request, jsonify
 import yt_dlp
 from flask_cors import CORS
-import os
 
+# --- Initialize Flask App ---
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 
 # --- Folder to save downloaded videos ---
 DOWNLOAD_FOLDER = "downloads"
 os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
-# --- Helper Function ---
+# --- Helper Function to download content ---
 def download_youtube(url, is_playlist=False):
+    # Retrieve credentials from environment variables
+    youtube_username = os.environ.get('YOUTUBE_USERNAME')
+    youtube_password = os.environ.get('YOUTUBE_PASSWORD')
+    
     ydl_opts = {
         "format": "bestvideo+bestaudio/best",
         "outtmpl": os.path.join(DOWNLOAD_FOLDER, "%(title)s.%(ext)s"),
         "noplaylist": not is_playlist,
-        'cookiefile': 'cookies.txt',  # This line is crucial for authentication
+        'username': youtube_username,
+        'password': youtube_password,
         'no_warnings': True,
         'ignoreerrors': True,
     }
