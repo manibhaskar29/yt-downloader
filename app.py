@@ -3,7 +3,7 @@ import yt_dlp
 from flask_cors import CORS
 import os
 
-app = Flask(__name__)
+app = Flask(_name_)
 CORS(app)  # Enable CORS for all routes
 
 # --- Folder to save downloaded videos ---
@@ -16,6 +16,9 @@ def download_youtube(url, is_playlist=False):
         "format": "bestvideo+bestaudio/best",
         "outtmpl": os.path.join(DOWNLOAD_FOLDER, "%(title)s.%(ext)s"),
         "noplaylist": not is_playlist,
+        'cookiefile': 'cookies.txt',  # This line is crucial for authentication
+        'no_warnings': True,
+        'ignoreerrors': True,
     }
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -48,6 +51,6 @@ def download_playlist():
     return jsonify(result)
 
 # --- Render needs this dynamic port ---
-if __name__ == "__main__":
+if _name_ == "_main_":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
