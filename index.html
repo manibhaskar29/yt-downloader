@@ -352,152 +352,131 @@
     </footer>
 
     <script>
-        // Configuration
-        const API_ENDPOINTS = {
-            video: 'https://YOUR_RENDER_BACKEND_URL/download-video',
-            playlist: 'https://YOUR_RENDER_BACKEND_URL/download-playlist'
-        };
+    // Configuration
+    const API_ENDPOINTS = {
+        video: 'https://yt-downloader-bqp9.onrender.com/download-video',
+        playlist: 'https://yt-downloader-bqp9.onrender.com/download-playlist'
+    };
 
-        // Utility functions
-        function setButtonLoading(button, isLoading) {
-            const btnText = button.querySelector('.btn-text');
-            
-            if (isLoading) {
-                button.disabled = true;
-                btnText.innerHTML = '<span class="loading-spinner"></span> Processing...';
+    // Utility functions
+    function setButtonLoading(button, isLoading) {
+        const btnText = button.querySelector('.btn-text');
+        
+        if (isLoading) {
+            button.disabled = true;
+            btnText.innerHTML = '<span class="loading-spinner"></span> Processing...';
+        } else {
+            button.disabled = false;
+            btnText.textContent = button.id === 'videoBtn' ? 'Download Video' : 'Download Playlist';
+        }
+    }
+
+    function isValidYouTubeUrl(url, type) {
+        if (type === 'video') {
+            return /^https?:\/\/(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w-]+/.test(url);
+        } else if (type === 'playlist') {
+            return /^https?:\/\/(www\.)?youtube\.com\/playlist\?list=[\w-]+/.test(url);
+        }
+        return false;
+    }
+
+    async function downloadContent(url, endpoint, button) {
+        const type = endpoint.includes('video') ? 'video' : 'playlist';
+        if (!isValidYouTubeUrl(url, type)) {
+            alert(`Please enter a valid YouTube ${type} URL`);
+            return;
+        }
+
+        setButtonLoading(button, true);
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url.trim() }),
+            });
+
+            if (response.ok) {
+                alert('Download started successfully! 🎉');
+                const inputId = type === 'video' ? 'videoUrl' : 'playlistUrl';
+                document.getElementById(inputId).value = '';
             } else {
-                button.disabled = false;
-                btnText.textContent = button.id === 'videoBtn' ? 'Download Video' : 'Download Playlist';
+                const errorText = await response.text();
+                throw new Error(`Server responded with ${response.status}: ${errorText}`);
             }
-        }
-
-        function isValidYouTubeUrl(url, type) {
-            if (type === 'video') {
-                return /^https?:\/\/(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w-]+/.test(url);
-            } else if (type === 'playlist') {
-                return /^https?:\/\/(www\.)?youtube\.com\/playlist\?list=[\w-]+/.test(url);
+        } catch (error) {
+            console.error('Download failed:', error);
+            let errorMessage = 'Download failed. Please try again later. ❌';
+            
+            if (error.message.includes('Failed to fetch')) {
+                errorMessage = 'Unable to connect to the server. Please check if backend is running. 🌐';
+            } else if (error.message.includes('404')) {
+                errorMessage = 'Service not found. Please check the backend URL. 🔧';
+            } else if (error.message.includes('500')) {
+                errorMessage = 'Server error. Please try again later. 🔧';
             }
-            return false;
+            
+            alert(errorMessage);
+        } finally {
+            setButtonLoading(button, false);
         }
+    }
 
-        async function downloadContent(url, endpoint, button) {
-            // Validate URL format
-            const type = endpoint.includes('video') ? 'video' : 'playlist';
-            if (!isValidYouTubeUrl(url, type)) {
-                alert(`Please enter a valid YouTube ${type} URL`);
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        const videoForm = document.getElementById('videoForm');
+        const videoBtn = document.getElementById('videoBtn');
+        
+        videoForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const url = document.getElementById('videoUrl').value.trim();
+            if (!url) {
+                alert('Please enter a YouTube video URL');
                 return;
             }
-
-            setButtonLoading(button, true);
-
-            try {
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ url: url.trim() }),
-                });
-
-                if (response.ok) {
-                    alert('Download started successfully! 🎉');
-                    // Clear the input field
-                    const inputId = type === 'video' ? 'videoUrl' : 'playlistUrl';
-                    document.getElementById(inputId).value = '';
-                } else {
-                    const errorText = await response.text();
-                    throw new Error(`Server responded with ${response.status}: ${errorText}`);
-                }
-            } catch (error) {
-                console.error('Download failed:', error);
-                
-                // Provide more specific error messages
-                let errorMessage = 'Download failed. Please try again later. ❌';
-                
-                if (error.message.includes('Failed to fetch')) {
-                    errorMessage = 'Unable to connect to the server. Please check your internet connection. 🌐';
-                } else if (error.message.includes('404')) {
-                    errorMessage = 'Service not found. Please check the backend URL. 🔧';
-                } else if (error.message.includes('500')) {
-                    errorMessage = 'Server error. Please try again later. 🔧';
-                }
-                
-                alert(errorMessage);
-            } finally {
-                setButtonLoading(button, false);
-            }
-        }
-
-        // Event listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            // Video download form
-            const videoForm = document.getElementById('videoForm');
-            const videoBtn = document.getElementById('videoBtn');
-            
-            videoForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const url = document.getElementById('videoUrl').value.trim();
-                
-                if (!url) {
-                    alert('Please enter a YouTube video URL');
-                    return;
-                }
-                
-                downloadContent(url, API_ENDPOINTS.video, videoBtn);
-            });
-
-            // Playlist download form
-            const playlistForm = document.getElementById('playlistForm');
-            const playlistBtn = document.getElementById('playlistBtn');
-            
-            playlistForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const url = document.getElementById('playlistUrl').value.trim();
-                
-                if (!url) {
-                    alert('Please enter a YouTube playlist URL');
-                    return;
-                }
-                
-                downloadContent(url, API_ENDPOINTS.playlist, playlistBtn);
-            });
-
-            // Add keyboard shortcuts
-            document.addEventListener('keydown', function(e) {
-                // Ctrl/Cmd + Enter to submit focused form
-                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                    const activeElement = document.activeElement;
-                    if (activeElement.id === 'videoUrl') {
-                        videoForm.dispatchEvent(new Event('submit'));
-                    } else if (activeElement.id === 'playlistUrl') {
-                        playlistForm.dispatchEvent(new Event('submit'));
-                    }
-                }
-            });
-
-            // Auto-focus first input on page load
-            document.getElementById('videoUrl').focus();
+            downloadContent(url, API_ENDPOINTS.video, videoBtn);
         });
 
-        // Add some visual feedback for better UX
-        document.querySelectorAll('.input-field').forEach(input => {
-            input.addEventListener('paste', function() {
-                // Small delay to let paste complete
-                setTimeout(() => {
-                    if (this.value.trim()) {
-                        this.style.borderColor = '#22c55e';
-                    }
-                }, 100);
-            });
+        const playlistForm = document.getElementById('playlistForm');
+        const playlistBtn = document.getElementById('playlistBtn');
+        
+        playlistForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const url = document.getElementById('playlistUrl').value.trim();
+            if (!url) {
+                alert('Please enter a YouTube playlist URL');
+                return;
+            }
+            downloadContent(url, API_ENDPOINTS.playlist, playlistBtn);
+        });
 
-            input.addEventListener('input', function() {
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                const activeElement = document.activeElement;
+                if (activeElement.id === 'videoUrl') {
+                    videoForm.dispatchEvent(new Event('submit'));
+                } else if (activeElement.id === 'playlistUrl') {
+                    playlistForm.dispatchEvent(new Event('submit'));
+                }
+            }
+        });
+
+        document.getElementById('videoUrl').focus();
+    });
+
+    document.querySelectorAll('.input-field').forEach(input => {
+        input.addEventListener('paste', function() {
+            setTimeout(() => {
                 if (this.value.trim()) {
                     this.style.borderColor = '#22c55e';
-                } else {
-                    this.style.borderColor = '';
                 }
-            });
+            }, 100);
         });
-    </script>
+
+        input.addEventListener('input', function() {
+            this.style.borderColor = this.value.trim() ? '#22c55e' : '';
+        });
+    });
+</script>
 </body>
 </html>
