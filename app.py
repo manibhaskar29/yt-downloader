@@ -4,7 +4,8 @@ import yt_dlp
 from flask_cors import CORS
 
 # --- Initialize Flask App ---
-app = Flask(__name__)
+# Fix: Corrected the name to "_name_"
+app = Flask(_name_)
 CORS(app)
 
 # --- Folder to save downloaded videos ---
@@ -13,7 +14,7 @@ os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
 # --- Helper Function to download content ---
 def download_youtube(url, is_playlist=False):
-    # Retrieve credentials from environment variables
+    # Fix: Securely retrieve credentials from environment variables
     youtube_username = os.environ.get('YOUTUBE_USERNAME')
     youtube_password = os.environ.get('YOUTUBE_PASSWORD')
     
@@ -41,22 +42,34 @@ def home():
 @app.route("/download-video", methods=["POST"])
 def download_video():
     data = request.get_json()
+    
+    # Fix: Added a check for invalid or missing JSON data
+    if not data or not isinstance(data, dict):
+        return jsonify({"error": "Invalid or missing JSON body"}), 400
+        
     url = data.get("url")
     if not url:
         return jsonify({"error": "URL is required"}), 400
+    
     result = download_youtube(url, is_playlist=False)
     return jsonify(result)
 
 @app.route("/download-playlist", methods=["POST"])
 def download_playlist():
     data = request.get_json()
+    
+    # Fix: Added a check for invalid or missing JSON data
+    if not data or not isinstance(data, dict):
+        return jsonify({"error": "Invalid or missing JSON body"}), 400
+
     url = data.get("url")
     if not url:
         return jsonify({"error": "URL is required"}), 400
+    
     result = download_youtube(url, is_playlist=True)
     return jsonify(result)
 
 # --- Render needs this dynamic port ---
-if __name__ == "__main__":
+if _name_ == "_main_":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
