@@ -5,7 +5,7 @@ from flask_cors import CORS
 
 # --- Initialize Flask App ---
 # Fix: Corrected the name to "_name_"
-app = Flask(_name_)
+app = Flask(__name__)
 CORS(app)
 
 # --- Folder to save downloaded videos ---
@@ -70,6 +70,6 @@ def download_playlist():
     return jsonify(result)
 
 # --- Render needs this dynamic port ---
-if _name_ == "_main_":
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
