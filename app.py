@@ -3,7 +3,7 @@ import yt_dlp
 from flask_cors import CORS
 import os
 
-app = Flask(_name_)
+app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # --- Folder to save downloaded videos ---
