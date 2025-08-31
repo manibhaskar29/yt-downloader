@@ -1,4 +1,3 @@
-Flask
-yt-dlp
-pytubefix
+flask
 gunicorn
+yt-dlp
