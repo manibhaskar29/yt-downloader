@@ -1,56 +1,45 @@
 from flask import Flask, request, jsonify
-import os
 import yt_dlp
-from pytubefix import Playlist, YouTube
-from pytubefix.cli import on_progress
-
-# Create downloads folder if not exists
-os.makedirs("downloads", exist_ok=True)
 
 app = Flask(__name__)
 
-# ----------- Single Video Download -----------------
-@app.route("/download-video", methods=["POST"])
-def download_video():
-    url = request.json.get("url")
-    if not url:
-        return jsonify({"status": "error", "msg": "No URL provided"}), 400
-
+# --- Helper Function ---
+def download_youtube(url, is_playlist=False):
     ydl_opts = {
-        "format": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
-        "merge_output_format": "mp4",
-        "outtmpl": "downloads/final_1080p.%(ext)s",
+        "format": "bestvideo+bestaudio/best",
+        "outtmpl": "%(title)s.%(ext)s",
+        "noplaylist": not is_playlist,
     }
-
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-        return jsonify({"status": "success", "msg": "Video downloaded!"})
+            info = ydl.extract_info(url, download=True)
+            return {"status": "success", "title": info.get("title", "Unknown")}
     except Exception as e:
-        return jsonify({"status": "error", "msg": str(e)}), 500
+        return {"status": "error", "message": str(e)}
 
-
-# ----------- Playlist Download -----------------
-@app.route("/download-playlist", methods=["POST"])
-def download_playlist():
-    url = request.json.get("url")
-    if not url:
-        return jsonify({"status": "error", "msg": "No URL provided"}), 400
-
-    try:
-        playlist = Playlist(url)
-        for vid in playlist.video_urls:
-            yt = YouTube(vid, on_progress_callback=on_progress)
-            yt.streams.get_highest_resolution().download("downloads/")
-        return jsonify({"status": "success", "msg": "Playlist downloaded!"})
-    except Exception as e:
-        return jsonify({"status": "error", "msg": str(e)}), 500
-
-
+# --- Routes ---
 @app.route("/", methods=["GET"])
 def home():
-    return "✅ YouTube Downloader Backend Running!"
+    return jsonify({"message": "YouTube Downloader API is running 🚀"})
 
+@app.route("/download-video", methods=["POST"])
+def download_video():
+    data = request.get_json()
+    url = data.get("url")
+    if not url:
+        return jsonify({"error": "URL is required"}), 400
+    result = download_youtube(url, is_playlist=False)
+    return jsonify(result)
 
+@app.route("/download-playlist", methods=["POST"])
+def download_playlist():
+    data = request.get_json()
+    url = data.get("url")
+    if not url:
+        return jsonify({"error": "URL is required"}), 400
+    result = download_youtube(url, is_playlist=True)
+    return jsonify(result)
+
+# --- Render needs this ---
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
