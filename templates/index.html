@@ -352,11 +352,11 @@
     </footer>
 
     <script>
-    // Configuration
-    const API_ENDPOINTS = {
-        video: 'https://yt-downloader-bqp9.onrender.com/download-video',
-        playlist: 'https://yt-downloader-bqp9.onrender.com/download-playlist'
-    };
+        // Configuration - Use relative URLs for production
+        const API_ENDPOINTS = {
+            video: '/download-video',
+            playlist: '/download-playlist'
+        };
 
     // Utility functions
     function setButtonLoading(button, isLoading) {
