@@ -1,56 +1,108 @@
-from flask import Flask, request, jsonify
-import os
+from flask import Flask, request, jsonify, render_template
+from flask_cors import CORS
 import yt_dlp
-from pytubefix import Playlist, YouTube
-from pytubefix.cli import on_progress
+import os
+import logging
 
-# Create downloads folder if not exists
-os.makedirs("downloads", exist_ok=True)
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
+CORS(app)
 
-# ----------- Single Video Download -----------------
+# Create downloads folder
+os.makedirs("downloads", exist_ok=True)
+
+
+# ---------------- SINGLE VIDEO ----------------
 @app.route("/download-video", methods=["POST"])
 def download_video():
-    url = request.json.get("url")
+    data = request.get_json() or {}
+    url = data.get("url")
+
     if not url:
         return jsonify({"status": "error", "msg": "No URL provided"}), 400
 
     ydl_opts = {
-        "format": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
+        "format": "best/bestvideo+bestaudio",
         "merge_output_format": "mp4",
-        "outtmpl": "downloads/final_1080p.%(ext)s",
+        "outtmpl": "downloads/%(title)s - %(id)s.%(ext)s",
+        "noplaylist": True,
+        "ignoreerrors": True,
+        "quiet": False,
+        "no_warnings": False,
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-        return jsonify({"status": "success", "msg": "Video downloaded!"})
+            info = ydl.extract_info(url, download=True)
+
+            # If YouTube blocks formats
+            if not info or not info.get("formats"):
+                return jsonify({
+                    "status": "error",
+                    "msg": "This video cannot be downloaded due to YouTube restrictions"
+                }), 200
+
+            return jsonify({
+                "status": "success",
+                "msg": "Video downloaded successfully (if allowed by YouTube)"
+            }), 200
+
     except Exception as e:
-        return jsonify({"status": "error", "msg": str(e)}), 500
+        logging.exception("Video download failed")
+        return jsonify({
+            "status": "error",
+            "msg": "YouTube blocked this video"
+        }), 200
 
 
-# ----------- Playlist Download -----------------
+# ---------------- PLAYLIST ----------------
 @app.route("/download-playlist", methods=["POST"])
 def download_playlist():
-    url = request.json.get("url")
+    data = request.get_json() or {}
+    url = data.get("url")
+
     if not url:
         return jsonify({"status": "error", "msg": "No URL provided"}), 400
 
+    ydl_opts = {
+        "format": "best/bestvideo+bestaudio",
+        "merge_output_format": "mp4",
+        "outtmpl": "downloads/%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s",
+        "ignoreerrors": True,
+        "quiet": False,
+        "no_warnings": False,
+    }
+
+    downloaded = 0
+
     try:
-        playlist = Playlist(url)
-        for vid in playlist.video_urls:
-            yt = YouTube(vid, on_progress_callback=on_progress)
-            yt.streams.get_highest_resolution().download("downloads/")
-        return jsonify({"status": "success", "msg": "Playlist downloaded!"})
-    except Exception as e:
-        return jsonify({"status": "error", "msg": str(e)}), 500
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            entries = info.get("entries", [])
+
+            for e in entries:
+                if e and e.get("formats"):
+                    downloaded += 1
+
+        return jsonify({
+            "status": "success",
+            "msg": f"Downloaded {downloaded} videos (others blocked by YouTube)"
+        }), 200
+
+    except Exception:
+        logging.exception("Playlist download failed")
+        return jsonify({
+            "status": "error",
+            "msg": "Playlist blocked by YouTube"
+        }), 200
 
 
 @app.route("/", methods=["GET"])
 def home():
-    return "✅ YouTube Downloader Backend Running!"
+    return render_template("index.html")
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port, debug=False)
