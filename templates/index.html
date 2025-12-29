@@ -235,6 +235,33 @@
             }
         }
 
+        /* Success Message */
+        .success-message {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+            color: #155724;
+        }
+
+        .download-link {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 10px 20px;
+            background: var(--gradient-youtube);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: var(--transition-smooth);
+        }
+
+        .download-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 0, 0, 0.3);
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .container {
@@ -380,6 +407,57 @@
         return false;
     }
 
+    function showSuccessMessage(container, message, downloadUrl, filename) {
+        // Remove any existing messages
+        const existingMsg = container.querySelector('.success-message');
+        if (existingMsg) {
+            existingMsg.remove();
+        }
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'success-message';
+        messageDiv.innerHTML = `
+            <strong>✅ ${message}</strong>
+            ${downloadUrl ? `
+                <br>
+                <a href="${downloadUrl}" class="download-link" download>
+                    📥 Download ${filename || 'File'}
+                </a>
+            ` : ''}
+        `;
+        container.appendChild(messageDiv);
+
+        // Auto-remove after 30 seconds
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.remove();
+            }
+        }, 30000);
+    }
+
+    function showErrorMessage(container, message) {
+        // Remove any existing messages
+        const existingMsg = container.querySelector('.success-message');
+        if (existingMsg) {
+            existingMsg.remove();
+        }
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'success-message';
+        messageDiv.style.background = '#f8d7da';
+        messageDiv.style.borderColor = '#f5c6cb';
+        messageDiv.style.color = '#721c24';
+        messageDiv.innerHTML = `<strong>❌ ${message}</strong>`;
+        container.appendChild(messageDiv);
+
+        // Auto-remove after 10 seconds
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.remove();
+            }
+        }, 10000);
+    }
+
     async function downloadContent(url, endpoint, button) {
         const type = endpoint.includes('video') ? 'video' : 'playlist';
         if (!isValidYouTubeUrl(url, type)) {
@@ -388,6 +466,11 @@
         }
 
         setButtonLoading(button, true);
+        
+        // Get the card container for showing messages
+        const card = button.closest('.download-card');
+        const inputId = type === 'video' ? 'videoUrl' : 'playlistUrl';
+        const input = document.getElementById(inputId);
 
         try {
             const response = await fetch(endpoint, {
@@ -396,13 +479,30 @@
                 body: JSON.stringify({ url: url.trim() }),
             });
 
-            if (response.ok) {
-                alert('Download started successfully! 🎉');
-                const inputId = type === 'video' ? 'videoUrl' : 'playlistUrl';
-                document.getElementById(inputId).value = '';
+            const data = await response.json();
+
+            if (response.ok && data.status === 'success') {
+                // Show success message with download link if available
+                showSuccessMessage(
+                    card,
+                    data.msg,
+                    data.download_url,
+                    data.filename
+                );
+                
+                // Clear input
+                input.value = '';
+                
+                // If download URL is provided, automatically trigger download after a short delay
+                if (data.download_url) {
+                    setTimeout(() => {
+                        window.open(data.download_url, '_blank');
+                    }, 1000);
+                }
             } else {
-                const errorText = await response.text();
-                throw new Error(`Server responded with ${response.status}: ${errorText}`);
+                // Show error message
+                const errorMsg = data.msg || 'Download failed. Please try again later.';
+                showErrorMessage(card, errorMsg);
             }
         } catch (error) {
             console.error('Download failed:', error);
@@ -416,7 +516,7 @@
                 errorMessage = 'Server error. Please try again later. 🔧';
             }
             
-            alert(errorMessage);
+            showErrorMessage(card, errorMessage);
         } finally {
             setButtonLoading(button, false);
         }
