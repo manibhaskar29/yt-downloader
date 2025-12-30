@@ -56,6 +56,7 @@ def download_video():
             logger.info("Using cookies file for authentication")
         
         # Additional options to help bypass detection on cloud hosting
+        # Note: These might help but can also interfere - test without if issues persist
         ydl_opts.update({
             "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
@@ -63,22 +64,26 @@ def download_video():
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # Download directly (matching localhost behavior)
+                # Download directly (matching localhost behavior exactly)
                 logger.info("Starting video download...")
                 info = ydl.extract_info(url, download=True)
-                
-                if not info or not info.get("formats"):
-                    return jsonify({
-                        "status": "error",
-                        "msg": "This video cannot be downloaded due to YouTube restrictions"
-                    }), 200
 
-                # Find the downloaded file
-                video_id = info.get("id", "unknown")
-                pattern = f"downloads/*{video_id}*"
-                files = glob.glob(pattern)
-                if files:
-                    downloaded_file = files[0]
+                # Check if download actually succeeded by looking for the file
+                # This handles cases where info might not have formats but file was downloaded
+                video_id = None
+                if info:
+                    video_id = info.get("id")
+                
+                # Try to find downloaded file by video ID
+                downloaded_file = None
+                if video_id:
+                    pattern = f"downloads/*{video_id}*"
+                    files = glob.glob(pattern)
+                    if files:
+                        downloaded_file = files[0]
+                
+                # If file exists, download succeeded regardless of info formats
+                if downloaded_file:
                     filename = os.path.basename(downloaded_file)
                     download_url = f"/download-file/{filename}"
                     logger.info(f"Video saved as: {filename}")
@@ -89,58 +94,26 @@ def download_video():
                         "download_url": download_url,
                         "filename": filename
                     }), 200
-                else:
-                    # File might be in a different location or format
+
+                # If no file found, check if YouTube blocked formats
+                if not info or not info.get("formats"):
                     return jsonify({
-                        "status": "success",
-                        "msg": "Video downloaded successfully (if allowed by YouTube)"
+                        "status": "error",
+                        "msg": "This video cannot be downloaded due to YouTube restrictions"
                     }), 200
 
-        except yt_dlp.utils.DownloadError as e:
-            error_msg = str(e)
-            logger.error(f"yt-dlp download error: {error_msg}")
-            
-            if "Private video" in error_msg or "private" in error_msg.lower():
+                # Fallback - download might have succeeded but file not found yet
                 return jsonify({
-                    "status": "error",
-                    "msg": "This video is private and cannot be downloaded."
-                }), 200
-            elif "Video unavailable" in error_msg or "unavailable" in error_msg.lower():
-                return jsonify({
-                    "status": "error",
-                    "msg": "Video is unavailable. It may have been deleted or restricted."
-                }), 200
-            elif "Sign in to confirm your age" in error_msg or "age" in error_msg.lower():
-                return jsonify({
-                    "status": "error",
-                    "msg": "This video requires age verification and cannot be downloaded."
-                }), 200
-            elif "Sign in to confirm you're not a bot" in error_msg or "bot" in error_msg.lower():
-                return jsonify({
-                    "status": "error",
-                    "msg": "YouTube is blocking the download. Please add cookies.txt file to bypass bot detection. See README for instructions."
-                }), 200
-            else:
-                return jsonify({
-                    "status": "error",
-                    "msg": f"Download failed: {error_msg[:100]}"
+                    "status": "success",
+                    "msg": "Video downloaded successfully (if allowed by YouTube)"
                 }), 200
 
         except Exception as e:
-            error_msg = str(e)
-            logger.error(f"Unexpected error during video download: {error_msg}")
-            logger.error(traceback.format_exc())
-            
-            # Check for timeout
-            if "timeout" in error_msg.lower() or "timed out" in error_msg.lower():
-                return jsonify({
-                    "status": "error",
-                    "msg": "Request timed out. The video may be too large or the server is slow. Please try again."
-                }), 200
-            
+            # Match localhost error handling exactly
+            logger.exception("Video download failed")
             return jsonify({
                 "status": "error",
-                "msg": "An error occurred while downloading. Please check the URL and try again."
+                "msg": "YouTube blocked this video"
             }), 200
 
     except Exception as e:
