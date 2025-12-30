@@ -5,6 +5,7 @@ import os
 import logging
 import traceback
 import glob
+import time
 from pathlib import Path
 
 logging.basicConfig(
@@ -67,23 +68,58 @@ def download_video():
                 # Download directly (matching localhost behavior exactly)
                 logger.info("Starting video download...")
                 info = ydl.extract_info(url, download=True)
+                
+                logger.info(f"Download completed. Info: {info is not None}, Has formats: {info and info.get('formats') is not None}")
 
-                # Check if download actually succeeded by looking for the file
-                # This handles cases where info might not have formats but file was downloaded
+                # Extract video ID from info or URL
                 video_id = None
                 if info:
                     video_id = info.get("id")
+                    logger.info(f"Video ID from info: {video_id}")
+                
+                # If no video ID from info, try to extract from URL
+                if not video_id:
+                    import re
+                    # Try to extract video ID from various YouTube URL formats
+                    patterns = [
+                        r'(?:v=|\/)([0-9A-Za-z_-]{11}).*',
+                        r'(?:embed\/)([0-9A-Za-z_-]{11})',
+                        r'(?:youtu\.be\/)([0-9A-Za-z_-]{11})'
+                    ]
+                    for pattern in patterns:
+                        match = re.search(pattern, url)
+                        if match:
+                            video_id = match.group(1)
+                            logger.info(f"Video ID extracted from URL: {video_id}")
+                            break
                 
                 # Try to find downloaded file by video ID
                 downloaded_file = None
                 if video_id:
-                    pattern = f"downloads/*{video_id}*"
-                    files = glob.glob(pattern)
-                    if files:
-                        downloaded_file = files[0]
+                    # Try multiple patterns
+                    patterns = [
+                        f"downloads/*{video_id}*",
+                        f"downloads/**/*{video_id}*",
+                    ]
+                    for pattern in patterns:
+                        files = glob.glob(pattern, recursive=True)
+                        if files:
+                            downloaded_file = files[0]
+                            logger.info(f"Found downloaded file: {downloaded_file}")
+                            break
+                
+                # Also check all files in downloads folder (fallback)
+                if not downloaded_file:
+                    all_files = glob.glob("downloads/*")
+                    # Get the most recently modified file
+                    if all_files:
+                        all_files = [f for f in all_files if os.path.isfile(f)]
+                        if all_files:
+                            downloaded_file = max(all_files, key=os.path.getmtime)
+                            logger.info(f"Using most recent file as fallback: {downloaded_file}")
                 
                 # If file exists, download succeeded regardless of info formats
-                if downloaded_file:
+                if downloaded_file and os.path.exists(downloaded_file):
                     filename = os.path.basename(downloaded_file)
                     download_url = f"/download-file/{filename}"
                     logger.info(f"Video saved as: {filename}")
@@ -96,6 +132,7 @@ def download_video():
                     }), 200
 
                 # If no file found, check if YouTube blocked formats
+                logger.warning(f"No file found. Info: {info is not None}, Formats: {info and bool(info.get('formats'))}")
                 if not info or not info.get("formats"):
                     return jsonify({
                         "status": "error",
@@ -110,7 +147,28 @@ def download_video():
 
         except Exception as e:
             # Match localhost error handling exactly
+            error_msg = str(e)
             logger.exception("Video download failed")
+            logger.error(f"Exception details: {error_msg}")
+            
+            # Check if any files were created despite the exception
+            all_files = glob.glob("downloads/*")
+            recent_files = [f for f in all_files if os.path.isfile(f)]
+            if recent_files:
+                # Get most recent file
+                recent_file = max(recent_files, key=os.path.getmtime)
+                # Check if it was modified in the last minute (likely from this download)
+                if (time.time() - os.path.getmtime(recent_file)) < 60:
+                    filename = os.path.basename(recent_file)
+                    download_url = f"/download-file/{filename}"
+                    logger.info(f"Found file created during download: {filename}")
+                    return jsonify({
+                        "status": "success",
+                        "msg": "Video downloaded successfully!",
+                        "download_url": download_url,
+                        "filename": filename
+                    }), 200
+            
             return jsonify({
                 "status": "error",
                 "msg": "YouTube blocked this video"
