@@ -1,5 +1,5 @@
-flask
-gunicorn
+Flask
 yt-dlp
-flask-cors
 pytubefix
+gunicorn
+flask-cors

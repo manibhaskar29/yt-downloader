@@ -1,157 +1,182 @@
 # YouTube Downloader
 
-A simple YouTube video and playlist downloader with a modern web interface.
+A full-stack web application that enables users to download YouTube videos and playlists in the highest available quality (up to 4K). Built with a Flask backend API and vanilla JavaScript frontend, featuring automatic video-audio stream merging and a responsive UI.
 
-## Setup Instructions
+## 🚀 Live Demo
 
-### 1. Create and Activate Virtual Environment
+Visit the application and start downloading videos instantly!
 
-**Windows (PowerShell):**
-```powershell
-# Create virtual environment (if not already created)
-python -m venv venv
+## 📌 Project Overview
 
-# Activate virtual environment
-.\venv\Scripts\Activate.ps1
+This YouTube downloader application provides a simple, user-friendly interface for downloading YouTube content while ensuring the highest possible video quality. The backend leverages **yt-dlp** (a modern YouTube downloader library) with FFmpeg integration to merge the best available video and audio streams into a single MP4 file.
+
+### Key Features
+
+- ✅ **High-Quality Downloads** - Downloads videos in the highest available quality (4K/1080p/720p)
+- ✅ **Playlist Support** - Download entire playlists with a single click
+- ✅ **Smart Stream Merging** - Automatically combines best video + audio using FFmpeg
+- ✅ **RESTful API** - Clean Flask API with proper error handling and CORS support
+- ✅ **Responsive UI** - Modern, mobile-friendly interface
+- ✅ **Download Progress** - Real-time feedback and error messages
+
+## 🛠️ Tech Stack
+
+**Backend:**
+- Python 3.7+
+- Flask (Web Framework)
+- yt-dlp (YouTube Downloader)
+- Flask-CORS (Cross-Origin Resource Sharing)
+- FFmpeg (Media Processing)
+
+**Frontend:**
+- HTML5
+- CSS3
+- Vanilla JavaScript (Fetch API)
+
+## 📂 Project Structure
+
+```
+yt-downloader/
+├── app.py              # Flask backend API
+├── index.html          # Frontend interface
+├── requirements.txt    # Python dependencies
+├── Procfile           # Deployment configuration
+├── run.bat            # Windows batch script
+├── run.ps1            # PowerShell script
+└── downloads/         # Downloaded videos (auto-created)
 ```
 
-**Windows (Command Prompt):**
-```cmd
-# Create virtual environment (if not already created)
-python -m venv venv
+## ⚙️ Installation & Setup
 
-# Activate virtual environment
-venv\Scripts\activate.bat
-```
+### Prerequisites
 
-**Linux/Mac:**
-```bash
-# Create virtual environment (if not already created)
-python3 -m venv venv
+1. **Python 3.7+** - [Download here](https://www.python.org/downloads/)
+2. **FFmpeg** - Required for high-quality downloads
+   - Windows: `winget install ffmpeg` or [download manually](https://ffmpeg.org/download.html)
+   - Mac: `brew install ffmpeg`
+   - Linux: `sudo apt install ffmpeg`
 
-# Activate virtual environment
-source venv/bin/activate
-```
+### Quick Start
 
-### 2. Install Dependencies
+1. **Clone the repository**
+   ```bash
+   git clone <your-repo-url>
+   cd yt-downloader-working
+   ```
 
-Once the virtual environment is activated, install the required packages:
+2. **Create & activate virtual environment**
+   
+   Windows (PowerShell):
+   ```powershell
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+   ```
+   
+   macOS/Linux:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
 
-```bash
-pip install -r requirements.txt
-```
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### 3. Run the Application
-
-**Option 1: Run Backend Only (Frontend served by Flask)**
-```bash
-python app.py
-```
-
-The application will be available at:
-- **Frontend:** http://localhost:8080
-- **Backend API:** http://localhost:8080/download-video and http://localhost:8080/download-playlist
-
-**Option 2: Run Backend and Frontend Separately**
-
-If you want to run them separately (for development):
-
-1. **Terminal 1 - Backend:**
+4. **Run the application**
    ```bash
    python app.py
    ```
 
-2. **Terminal 2 - Frontend (Simple HTTP Server):**
-   ```bash
-   # Python 3
-   python -m http.server 3000
+5. **Access the app**
    
-   # Or using Python 2
-   python -m SimpleHTTPServer 3000
+   Open your browser and navigate to:
    ```
-   
-   Then open http://localhost:3000 in your browser.
+   http://localhost:8080
+   ```
 
-   **Note:** If running separately, you may need to update the API endpoints in `templates/index.html` to match your backend URL.
+## 🎯 Usage
 
-## Project Structure
+1. Open the application in your browser
+2. Paste a YouTube video or playlist URL into the input field
+3. Click **"Download Video"** or **"Download Playlist"**
+4. Wait for the download to complete
+5. Find your videos in the `downloads/` folder
 
-```
-yt-downloader/
-├── app.py                 # Flask backend server
-├── requirements.txt       # Python dependencies
-├── Procfile              # Render deployment config
-├── runtime.txt           # Python version for Render
-├── .gitignore           # Git ignore rules
-├── templates/           # HTML templates
-│   └── index.html       # Frontend web interface
-├── downloads/           # Downloaded videos (gitignored)
-├── run.bat              # Windows batch script
-├── run.ps1              # PowerShell script
-├── README.md            # This file
-└── DEPLOYMENT.md        # Deployment guide
-```
+## 🔧 API Endpoints
 
-## Features
+### POST `/download-video`
+Downloads a single YouTube video in highest quality.
 
-- ✅ Download single YouTube videos
-- ✅ Download entire playlists
-- ✅ Modern, responsive web interface
-- ✅ CORS enabled for cross-origin requests
-
-## Dependencies
-
-- Flask - Web framework
-- flask-cors - CORS support
-- yt-dlp - YouTube downloader
-- pytubefix - Alternative YouTube downloader
-- gunicorn - Production WSGI server (optional)
-
-## Troubleshooting
-
-### Virtual Environment Issues
-
-If you get an error about scripts not being executable:
-- **Windows:** Make sure you're using PowerShell or Command Prompt
-- **Linux/Mac:** Run `chmod +x venv/bin/activate`
-
-### Port Already in Use
-
-If port 8080 is already in use, you can change it in `app.py`:
-```python
-app.run(host="0.0.0.0", port=8080)  # Change 8080 to another port
+**Request Body:**
+```json
+{
+  "url": "https://www.youtube.com/watch?v=VIDEO_ID"
+}
 ```
 
-### Dependencies Not Installing
+**Response:**
+```json
+{
+  "status": "success",
+  "msg": "Video downloaded successfully"
+}
+```
 
-Make sure your virtual environment is activated before running `pip install -r requirements.txt`.
+### POST `/download-playlist`
+Downloads all videos from a YouTube playlist.
 
-## Usage
+**Request Body:**
+```json
+{
+  "url": "https://www.youtube.com/playlist?list=PLAYLIST_ID"
+}
+```
 
-1. Start the server: `python app.py`
-2. Open your browser and go to: http://localhost:8080
-3. Paste a YouTube video or playlist URL
-4. Click download
-5. Videos will be saved in the `downloads/` folder
+**Response:**
+```json
+{
+  "status": "success",
+  "msg": "Downloaded 12 videos"
+}
+```
 
-## 🚀 Deployment
+## 💡 How It Works
 
-### Deploy to Render
+1. **Frontend** sends a POST request with the YouTube URL to the Flask API
+2. **Backend** uses yt-dlp to fetch video metadata and available formats
+3. **Format Selection** prioritizes `bestvideo+bestaudio` for maximum quality
+4. **FFmpeg** merges the separate video and audio streams into a single MP4 file
+5. **Download** saves the final video to the `downloads/` folder
+6. **Response** returns success/error status to the frontend
 
-For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)
+## 🎨 Features Breakdown
 
-**Quick Steps:**
-1. Push your code to GitHub
-2. Connect repository to Render
-3. Render will automatically detect and deploy your Flask app
-4. Your app will be live at `https://your-app.onrender.com`
+### Smart Format Selection
+The application uses the format string `bestvideo+bestaudio/best`:
+- Downloads the highest quality video stream (up to 8K if available)
+- Downloads the highest quality audio stream separately
+- Merges them using FFmpeg into a single file
+- Falls back to best single-file format if needed
 
-### Deploy to GitHub
+### Error Handling
+- Invalid URLs
+- Age-restricted content
+- Region-locked videos
+- Network failures
+- FFmpeg merge errors
 
-1. Initialize git: `git init`
-2. Add files: `git add .`
-3. Commit: `git commit -m "Initial commit"`
-4. Push to GitHub: `git push origin main`
 
-**Note:** Make sure to exclude `venv/` and `downloads/` folders (already in `.gitignore`)
+## 📝 License
 
+This project is for educational purposes. Please respect YouTube's Terms of Service and copyright laws.
+
+## 👨‍💻 Author
+
+**Your Name**
+- GitHub: [@yourusername](https://github.com/yourusername)
+- LinkedIn: [Your Profile](https://linkedin.com/in/yourprofile)
+
+---
+
+**Note:** This project demonstrates full-stack development skills including REST API design, asynchronous operations, external library integration, and responsive web design.
